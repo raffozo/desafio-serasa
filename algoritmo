@@ -1,0 +1,327 @@
+!     DESCRICAO DO NOME DO PROGRAMA
+      program lancamento_dados_financeiros
+
+!     ------------------------ ROTINA PRINCIPAL ------------------------
+
+!     DESCRICAO DAS VARIAVEIS DESTA SE€AO
+      implicit none       !SERVE PARA RETIRAR A ESPECIFICACAO DEFAULT
+                          !QUE O FORTRAN POSSUI SOBRE O ALFABETO
+      integer answer      !A VARIAVEL answer  UM NUMERO INTEIRO
+
+!     PRIMEIRA INTERA€AO COM O USUARIO
+      write(*,*) '-----------------------------------------------------'
+      write(*,*) '|                       Ol !                        |'
+      write(*,*) '|Vocˆ deseja adicionar dados banc rios de empresas? |'
+      write(*,*) '|        (Digite 1 para sim ou 2 para nao)          |'
+      write(*,*) '-----------------------------------------------------'
+  10  read(*,*) answer
+      
+!     COMANDOS PARA INTERPRETAR A RESPOSTA DO USUARIO
+!     CASO POSITIVA, CHAMA A SUBROTINA DE CALCULOS QUE  RESPONSAVEL
+!     PELA ROTINA PRINCIPAL DO PROGRAMA
+      if (answer .eq. 1) then
+         call cadastro
+!     CASO NEGATIVA, ENCERRA O PROGRAMA
+      else if (answer .eq. 2) then
+         write(*,*) '-----------------------------------------------------'
+         write(*,*) '|              Lamento, at‚ a pr¢xima!              |'
+         write(*,*) '|       (Toque em qualquer tecla para fechar)       |'
+         write(*,*) '-----------------------------------------------------'
+         go to 20
+!     CASO SEJA UMA RESPOSTA NUMERICA INVALIDA, MOSTRA MENSAGEM DE ERRO
+      else
+         write(*,*) '-----------------------------------------------------'
+         write(*,*) '|   Desculpe, responda 1 para sim ou 2 para nao.    |'
+         write(*,*) '-----------------------------------------------------'
+         go to 10   !MANDA O USUARIO DE VOLTA PARA ESCREVER A RESPOSTA DA PERGUNTA
+      endif
+
+!     COMANDO PARA ESPERAR O USUARIO APERTAR ALGUMA TECLA PARA FECHAR
+  20  pause
+      end
+
+!     ------------------- FIM DA ROTINA PRINCIPAL ----------------------
+
+
+!     ------------------- SUBROTINA DE CALCULOS ------------------------
+
+!     NOME DA SUBROTINA, USADO PARA PODER CHAMA-LA
+      subroutine cadastro
+
+!     NOMEACAO E ESPECIFICACAO DAS VARIAVEIS
+      implicit none
+      integer i,j,k,l,m    !NOTA€AO DE CONTAGEM UTILIZADA NOS do's
+!     CONTAGEM DO NUMERO DE EMPRESAS, DE DADOS FINANCEIROS, NOTAS E DEBITOS
+      integer npts,numdados,numnotas,numdebitos
+!     DEFINICAO DE UM LIMITE PARA O NUMERO DE LINHAS DO CADASTRO DE EMPRESAS
+      integer nmax
+      parameter (nmax=100000)
+!     DEFINICAO DAS VARIAVEIS CARACTERES, COM ESPECIFICACAO DE NUM MAXIMO DE CARACTERES
+      character*100 nome(nmax),novonome(nmax)  !NOME DAS EMPRESAS CADASTRADAS
+      character*100 datafile                   !NOME DO ARQUIVO DE DADOS FINANCEIROS
+!     DEFINICAO DAS VARIAVEIS NUMERICAS INTEIRAS
+      integer id(nmax),novoid(nmax)            !NUMERO DE ID DAS EMPRESAS
+      integer empresa                          !RESPOSTA DE ID DO USUARIO
+      integer answer1,answer2                  !RESPOSTA AS PERGUNTAS FEITAS PELO PROGRAMA
+!     DEFINICAO DAS VARIAVEIS NUMERICAS REAIS
+      real conf(nmax),ranking(nmax),confmax     !CONFIABILIDADE DA EMPRESA
+      real notas(nmax)                          !VALORES DAS NOTAS FISCAIS
+      real debitos(nmax)                        !VALORES DOS DEBITOS
+
+
+!     COMANDO DE LEITURA E INTERPRETACAO DO CADASTRO DE EMPRESAS
+!     SENDO QUE npts  O NUMERO DE LINHAS, OU SEJA, NUMERO DE EMPRESAS
+!     O COMANDO NAO LE nmax VALORES, ELE DETERMINA npts E PARA DE LER
+!     O ARQUIVO DE CADASTRO DE EMPRESAS  COMPOSTO POR 3 COLUNAS EM QUE
+!     A PRIMEIRA  O NOME, A SEGUNDA O ID E A TERCEIRA A CONFIABILIDADE
+!     (QUE, INICIALMENTE,  DE 50%)
+      open (unit=1,file='cadastroempresas.txt',status='old')
+      do 30 i=1,nmax
+         read(1,*,end=40) nome(i),id(i),conf(i)
+  30  continue
+  40  npts = i - 1
+      close(1)
+
+!     DEMONSTRA€AO EM TELA DO CADASTRO DE EMPRESAS PARA O USUARIO
+      write(*,*) '-----------------------------------------------------'
+      write(*,*) '|              CADASTRO DE EMPRESAS                 |'
+      write(*,*) '-----------------------------------------------------'
+      write (*,*) 'Empresa         ID    Confiabilidade[%]'
+      do j=1,npts
+         write(*,'(1x,A15,1x,I5,1x,F5.0)') nome(j),id(j),conf(j)
+      end do
+      write(*,*) '-----------------------------------------------------'
+      write(*,*) '|     Esta ‚ a lista das empresas cadastradas!      |'
+  50  write(*,*) '|   Por favor, digite o ID da empresa a qual vocˆ   |'
+      write(*,*) '|         adicionar  os dados banc rios.            |'
+      write(*,*) '-----------------------------------------------------'
+      read(*,*) empresa
+
+!     REPETI€AO DE LEITURA NECESSARIA POR CAUSA DO LOOP DA LINHA 60
+!     O ARQUIVO DE CADASTRO PRECISA SER LIDO DE NOVO PORQUE ELE FOI
+!     REESCRITO A PARTIR DO RESULTADO DO RANKING APOS O LANCAMENTO DOS
+!     DADOS FINANCEIROS DA EMPRESA ESCOLHIDA PELO USUARIO
+      open (unit=1,file='cadastroempresas.txt',status='old')
+      do 60 i=1,nmax
+         read(1,*,end=70) nome(i),id(i),conf(i)
+  60  continue
+  70  npts = i - 1
+      close(1)
+
+!     COMANDO PARA LER O ID DIGITADO PELO USUARIO E VERIFICAR QUAL O
+!     NOME DA EMPRESA CORRESPONDENTE AO ID
+      do j=1,npts
+         if (empresa .eq. id(j)) then
+            write(*,*) '-----------------------------------------------------'
+            write(*,*) '|        Vocˆ selecionou a seguinte empresa:        |'
+            write(*,*) '-----------------------------------------------------'
+            write(*,*) nome(j)
+            go to 80   !DIRECIONA DIRETO PRA LEITURA DO ARQUIVO DE DADOS FINANCEIROS
+         end if
+!     COMANDO CASO O ID DIGITADO NAO CORRESPONDER A NENHUMA EMPRESA
+         if (j .eq. npts) then
+            if (empresa .ne. id(npts)) then
+               write(*,*) '-----------------------------------------------------'
+               write(*,*) '|    Nao encontramos nenhuma empresa cadastrada.    |'
+               write(*,*) '|  Vocˆ tem certeza de que escreveu corretamente?   |'
+               go to 50    !DIRECIONA DE VOLTA PARA ESCREVER O ID NOVAMENTE
+            else    !SE O ID CORRESPONDER AO ULTIMO ID DA LISTA DE EMPRESAS
+               write(*,*) '-----------------------------------------------------'
+               write(*,*) '|        Vocˆ selecionou a seguinte empresa:        |'
+               write(*,*) '-----------------------------------------------------'
+               write(*,*) nome(j)
+               go to 80   !DIRECIONA PRA LEITURA DO ARQUIVO DE DADOS FINANCEIROS
+            end if
+         end if
+      end do
+
+!     COMANDO PARA LER O NOME DO ARQUIVO DE DADOS FINANCEIROS
+  80  write(*,*) '-----------------------------------------------------'
+      write(*,*) '|  Qual o nome do arquivo de dados financeiros?     |'
+      write(*,*) '-----------------------------------------------------'
+      read(*,*) datafile
+
+!     COMANDO PARA LER O ARQUIVO DE DADOS FINANCEIROS E DETERMINAR NUM. DE DADOS
+!     O ARQUIVO DEVE SER COMPOSTO POR DUAS COLUNAS COM IGUAL NUMERO DE LINHAS
+!     SENDO QUE A PRIMEIRA COLUNA  CORRESPONDE AO VALOR DAS NOTAS FISCAIS
+!     E A SEGUNDA COLUNA CORRESPONDE AO VALOR DOS DEBITOS, SE AINDA HOUVER
+!     LINHAS NO ARQUIVO MAS NAO TIVER MAIS VALOR, DEVE CONSTAR O VALOR ZERO
+      open (unit=2,file=datafile)
+      do 90 i=1,nmax
+         read(2,*,end=100) notas(i),debitos(i)
+  90  continue
+  100 numdados = i - 1
+      close(2)
+      
+!     COMANDO PARA DETERMINAR O NUMERO DE NOTAS E NUMERO DE DEBITOS DO ARQUIVO
+      numnotas = 0.0d+0
+      numdebitos = 0.0d+0
+      do k=1,numdados
+         if (notas(k) .ne. 0.0d+0) then    !SE O VALOR DA NOTA FOR ZERO, NAO HA NOTA
+            numnotas = numnotas + 1
+         else
+            numnotas = numnotas
+         end if
+         if (debitos(k) .ne. 0.0d+0) then    !SE O VALOR DO DEBITO FOR ZERO, NAO HA DEBITO
+            numdebitos = numdebitos + 1
+         else
+            numdebitos = numdebitos
+         end if
+      end do
+
+!     COMANDO PARA CALCULAR A CONFIABILIDADE COM O NUMERO DE NOTAS E DEBITOS
+!     (PROCEDIMENTO DADO NO BRIEFING: PRIMEIRO CONSIDERAR NUMERO DE NOTAS)
+!     SE EXISTIR NUMERO DE NOTAS, ENTAO REALIZAR O CALCULO
+      if (numnotas .ne. 0.0d+0) then
+         do k=1,numnotas
+            conf(j) = conf(j) + (nint(conf(j))*0.02d+0) !COMANDO nint(x) PARA USAR
+         end do                                         !O VALOR ARREDONDADO
+      end if
+
+!     (PROCEDIMENTO DADO NO BRIEFING: APOS CONSIDERAR NOTAS, CALCULAR DEBITOS)
+!     SE EXISTIR NUMERO DE DEBITOS, ENTAO CONTINUAR O CALCULO
+      if (numdebitos .ne. 0.0d+0) then
+         do k=1,numdebitos
+            conf(j) = conf(j) - (nint(conf(j))*0.04d+0) !COMANDO nint(x) PARA USAR
+         end do                                         !O VALOR ARREDONDADO
+
+!     SE NAO TIVER NEM NOTAS NEM DEBITOS LAN€ADOS NO ARQUIVO DE DADOS FINANCEIROS
+      else if ((numdebitos.eq.0.0d+0) .and. (numnotas.eq.0.0d+0)) then
+         write(*,*) '-----------------------------------------------------'
+         write(*,*) '|Nao h  lan‡amentos para recalcular a confiabilidade|'
+         go to 130  !ESTA LINHA ESTA MAIS EMBAIXO NO ALGORITMO, E  A LINHA DE
+      end if        !REPETICAO DE LANCAMENTO DE ARQUIVOS DE DADOS FINANCEIROS
+                    !SO MANDO LA PRA BAIXO POR CAUSA DO TEXTO, DEPOIS NA SEQUENCIA
+                    !O ALGORITMO JA MANDA DE VOLTA LA PRO COMANDO NUMERO 50
+                    !PRA DIGITAR O ID DA EMPRESA PRO PROXIMO LANCAMENTO
+
+!     CONFORME BRIEFING, TODOS OS VALORES ABAIXO DE 0 SAO 1%, ASSIM COMO
+!     TODOS OS VALORES ACIMA DE 100 SAO 100%, ESTE COMANDO CERTIFICA ISSO
+      if (conf(j) .gt. 100.0d+0) then
+         conf(j) = 100.0d+0
+      else if (conf(j) .lt. 1.0d+0) then
+         conf(j) = 1.0d+0
+      end if
+
+!     COMANDO PARA ATRIBUIR A CONFIABILIDADE APENAS O VALOR ARREDONDADO
+      conf(j) = nint(conf(j))
+
+!     ESCREVER NA TELA O NUMERO DE NOTAS E DEBITOS CONTABILIZADOS DO
+!     ARQUIVO DE DADOS FINANCEIROS, PARA CONFERENCIA DO USUARIO
+      write(*,*) '-----------------------------------------------------'
+      write(*,*) '|O n£mero de notas e d‚bitos contabilizados foi de: |'
+      write(*,*) '-----------------------------------------------------'
+      write(*,*) numnotas,' nota(s) e',numdebitos,' d‚bito(s)'
+
+!     MOSTRAR A CONFIABILIDADE CALCULADA A PARTIR DA INTRODU€AO DO ARQUIVO
+!     PARA FINS DE PRATICIDADE, O USUARIO NAO TER QUE MOSTRAR O RANKING
+!     SO PARA VISUALIZAR O VALOR CALCULADO
+      write(*,*) '-----------------------------------------------------'
+      write(*,*) '|       A nova confiabilidade calculada ‚ de:       |'
+      write(*,*) '-----------------------------------------------------'
+      write(*,*) conf(j),'%'
+
+!     COMANDOS PARA CALCULAR O RANKING DAS EMPRESAS
+!     DEFINICAO DA MAIOR CONFIABILIDADE DENTRE TODAS AS EMPRESAS
+      confmax=0.0d+0
+      do k=1,npts
+         if (conf(k) .gt. confmax) then
+            confmax = conf(k)
+     	 end if
+      end do
+
+!     ESSE COMANDO ZERA OS VALORES DA MATRIZ conf(x) CONFORME ORGANIZA
+!     NA MATRIZ ranking(x) AS CONFIABILIDADES EM ORDEM DECRESCENTE
+      do k=1,npts
+          do m=1,npts
+             if (conf(m) .eq. confmax) then
+                    ranking(k) = conf(m)
+                    novonome(k) = nome(m)
+                    novoid(k) = id(m)
+                    conf(m) = 0.0d+0
+                    go to 110
+     	     end if
+     	  end do
+!     DEFINICAO DE NOVO VALOR MAXIMO DE CONFIABILIDADE
+  110     confmax=0.0d+0
+          do l=1,npts
+             if (conf(l) .gt. confmax) then
+                confmax = conf(l)
+     	     end if
+          end do
+      end do
+
+!     O ALGORITMO REESCREVE O ARQUIVO DE CADASTRO DE EMPRESAS, ORGANIZANDO
+!     EM ORDEM DECRESCENTE CONFORME A CONFIABILIDADE. OU SEJA, MESMO SE
+!     O USUARIO FECHAR O PROGRAMA, QUANDO ELE ABRIR NOVAMENTE PARA LAN€AR
+!     MAIS ARQUIVOS DE DADOS, AS CONFIABILIDADES DOS ULTIMOS LAN€AMENTOS
+!     ESTARAO SALVAS E O PROGRAMA PRONTO PARA LAN€AR MAIS ARQUIVOS
+      open (1,file='cadastroempresas.txt',status='replace')
+      do k=1,npts
+         write(1,'(1x,A15,1x,I5,1x,F5.0)')
+     $ novonome(k),novoid(k),ranking(k)
+      end do
+      close (1)
+
+!     OFERECER A OP€AO AO USUARIO PARA VISUALIZAR O RANKING ATUALIZADO
+      write(*,*) '-----------------------------------------------------'
+      write(*,*) '|         Vocˆ deseja visualizar o ranking?         |'
+      write(*,*) '|         (Digite 1 para sim ou 2 para nao)         |'
+      write(*,*) '-----------------------------------------------------'
+  120 read(*,*) answer1
+
+!     CASO RESPOSTA POSITIVA A PERGUNTA 1
+      if (answer1 .eq. 1) then
+         go to 150  !DIRECIONA PARA VISUALIZA€AO DE RANKING EM TELA
+
+!     CASO O USUARIO NAO QUEIRA VISUALIZAR O RANKING, FAZER A PERGUNTA 2:
+      else if (answer1 .eq. 2) then
+         write(*,*) '-----------------------------------------------------'
+         write(*,*) '|                     OK!                           |'
+  130    write(*,*) '|          Vocˆ deseja lan‡ar mais um               |'
+         write(*,*) '|         arquivo de dados financeiros?             |'
+         write(*,*) '|      (Digite 1 para sim ou 2 para nao)            |'
+         write(*,*) '-----------------------------------------------------'
+  140    read(*,*) answer2
+!        CASO RESPOSTA POSITIVA A PERGUNTA 2
+         if (answer2 .eq. 1) then
+            write(*,*) '-----------------------------------------------------'
+            go to 50   !DIRECIONA DE VOLTA PARA INSER€AO DE ID DA EMPRESA
+!        CASO RESPOSTA NEGATIVA A PERGUNTA 2
+         else if (answer2 .eq. 2) then
+            write(*,*) '-----------------------------------------------------'
+            write(*,*) '|              Lamento, at‚ a pr¢xima!              |'
+            write(*,*) '|       (Toque em qualquer tecla para fechar)       |'
+            write(*,*) '-----------------------------------------------------'
+            go to 160   !ENCERRA O PROGRAMA
+!        CASO O USUARIO ESCREVEU UMA RESPOSTA INCORRETA A PERGUNTA 2
+         else
+            write(*,*) '-----------------------------------------------------'
+            write(*,*) '|   Desculpe, responda 1 para sim ou 2 para nao.    |'
+            write(*,*) '-----------------------------------------------------'
+            go to 140   !VOLTAR PARA LEITURA DE RESPOSTA 2
+         endif
+
+!     CASO O USUARIO ESCREVEU UMA RESPOSTA INCORRETA A PERGUNTA 1
+      else
+         write(*,*) '-----------------------------------------------------'
+         write(*,*) '|   Desculpe, responda 1 para sim ou 2 para nao.    |'
+         write(*,*) '-----------------------------------------------------'
+         go to 120   !VOLTAR PARA LEITURA DE RESPOSTA 1
+      endif
+
+!     ESCREVER NA TELA O RANKING ATUALIZADO DAS EMPRESAS CONFORME AVAL DO USUARIO
+  150 write(*,*) '-----------------------------------------------------'
+      write(*,*) '|               RANKING DE EMPRESAS                 |'
+      write(*,*) '-----------------------------------------------------'
+      write (*,*) 'Empresa         ID    Confiabilidade[%]'
+      do k=1,npts
+         write(*,'(1x,A15,1x,I5,1x,F5.0)')
+     $ novonome(k),novoid(k),ranking(k)
+      end do
+      write(*,*) '-----------------------------------------------------'
+      go to 130   !PERGUNTAR SE QUER LAN€AR MAIS ARQUIVOS DE DADOS
+
+  160 end  !FIM DA SUBROTINA, VOLTA PARA ROTINA PRINCIPAL
+  
+!     ------------------------ FIM DA SUBROTINA ------------------------
